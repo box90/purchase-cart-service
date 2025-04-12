@@ -28,7 +28,7 @@ class InMemoryProductRepository(ProductRepository):
         self.database = database
 
     async def get_by_id(self, id: int) -> Product | None:
-        if id not in self.database.products:
+        if id not in self.database.products.keys():
             return None
         return await _build_product_model(self.database.products[id])
 
