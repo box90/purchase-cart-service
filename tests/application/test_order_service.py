@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock
 from uuid import uuid4
+
+from domain.dtos.calculation_request import CalculationRequest
 from src.domain.dtos.order_request import OrderRequest
 from src.domain.dtos.product_request import ProductRequest
 from src.domain.models.order import Order
@@ -16,7 +18,8 @@ async def test_calculate_order():
 
     product_order = ProductOrder(1, "Pizza", 10, 2.5,2)
 
-    order_data = OrderRequest(products=[ProductRequest(product_id=1, quantity=2)])
+    order_data = OrderRequest(items=[ProductRequest(product_id=1, quantity=2)])
+    calculate_data = CalculationRequest(order=order_data.model_dump())
 
     expected_order = Order(
         order_id=uuid4(),
@@ -28,8 +31,9 @@ async def test_calculate_order():
     calculate_order_usecase.execute.return_value = expected_order
 
     # Act
-    result = await order_service.calculate_order(order_data)
+    result = await order_service.calculate_order(calculate_data)
 
     # Assert
-    calculate_order_usecase.execute.assert_called_once_with(order_data)
+    calculate_order_usecase.execute.assert_called_once()
+    assert calculate_order_usecase.execute.call_args[0][0].model_dump() == order_data.model_dump()
     assert result == expected_order

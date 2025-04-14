@@ -11,7 +11,7 @@ async def test_calculate_order_usecase_success():
     product_id_1 = 1
     product_id_2 = 2
 
-    request = OrderRequest(products=[
+    request = OrderRequest(items=[
         ProductRequest(product_id=product_id_1, quantity=2),
         ProductRequest(product_id=product_id_2, quantity=1)
     ])
@@ -40,7 +40,7 @@ async def test_calculate_order_usecase_success():
 async def test_calculate_order_product_not_found():
     # Arrange
     fake_id = 1
-    request = OrderRequest(products=[ProductRequest(product_id=fake_id, quantity=1)])
+    request = OrderRequest(items=[ProductRequest(product_id=fake_id, quantity=1)])
 
     mock_repo = AsyncMock()
     mock_repo.get_by_id.return_value = None
