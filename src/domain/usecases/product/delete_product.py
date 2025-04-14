@@ -1,3 +1,4 @@
+from src.domain.errors.exceptions import ProductNotFoundError
 from src.domain.repositories.product_repository import ProductRepository
 
 
@@ -7,8 +8,8 @@ class DeleteProductUseCase:
 
     async def execute(self, product_id):
         # Validate the product ID
-        if not isinstance(product_id, int) or product_id <= 0:
-            raise ValueError("Invalid product ID")
+        if not self.product_repository.get_by_id(product_id):
+            raise ProductNotFoundError(f"Invalid product ID {product_id}")
 
         # Delete the product using the repository
         await self.product_repository.delete(product_id)

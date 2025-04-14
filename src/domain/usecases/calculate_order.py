@@ -1,6 +1,7 @@
 import uuid
 from typing import List
 
+from src.domain.errors.exceptions import OrderValidationError
 from src.domain.dtos.order_request import OrderRequest
 from src.domain.models.order import Order
 from src.domain.models.product_order import ProductOrder
@@ -15,10 +16,10 @@ class CalculateOrderUseCase:
         total_price = 0.0
         total_vat = 0.0
         product_list: List[ProductOrder] = []
-        for item in order_request.products:
+        for item in order_request.items:
             product = await self.product_repository.get_by_id(item.product_id)
             if product is None:
-                raise Exception(f"Product with id {item.product_id} not found")
+                raise OrderValidationError(f"Product with id {item.product_id} not found")
 
             total_price += product.price * item.quantity
             total_vat += product.vat * item.quantity

@@ -11,6 +11,6 @@ class Order:
     Order model class.
     """
     order_id: UUID
-    items: List[ProductOrder]
     order_price: float
     order_vat: float
+    items: List[ProductOrder]
