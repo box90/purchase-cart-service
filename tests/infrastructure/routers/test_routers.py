@@ -2,10 +2,10 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
-from domain.dtos.calculation_request import CalculationRequest
-from domain.dtos.order_request import OrderRequest
-from domain.dtos.product_creation_request import ProductUpsertRequest
-from domain.dtos.product_request import ProductRequest
+from src.domain.dtos.calculation_request import CalculationRequest
+from src.domain.dtos.order_request import OrderRequest
+from src.domain.dtos.product_creation_request import ProductUpsertRequest
+from src.domain.dtos.product_request import ProductRequest
 from src.main import app
 
 client = TestClient(app)
@@ -89,10 +89,9 @@ def test_delete_product(mock_product_service, test_client):
     # Validate the response
     assert response.status_code == 200
 
-# Test for calculating an order with mock
+
 @patch("src.application.dic.DIC.order_service", new_callable=AsyncMock)
-def test_calculate_order(mock_order_service, test_client):
-    # Mock the calculate_order method to return a predefined order
+def test_calculate_order_with_rate_limiter(mock_order_service, test_client):
     mock_order_service.calculate_order.return_value = {
         "order_id": "123e4567-e89b-12d3-a456-426614174000",
         "items": [
@@ -103,23 +102,54 @@ def test_calculate_order(mock_order_service, test_client):
         "order_vat": 8.0,
     }
 
-    # Convert ProductRequest instances to dictionaries
     products = [
         ProductRequest(product_id=1, quantity=2).model_dump(),
         ProductRequest(product_id=2, quantity=1).model_dump(),
     ]
 
-    request: CalculationRequest = CalculationRequest(order=OrderRequest(items=products))
+    order = OrderRequest(items=products).model_dump()
+
+    request = CalculationRequest(order=order)
 
     payload = request.model_dump()
 
-    # Perform the POST request
     response = test_client.post("/order/calculate", json=payload)
+    mock_order_service.calculate_order.assert_called_once()
 
-    # Ensure the mock method was called
-    mock_order_service.calculate_order.assert_called()
+    if response.status_code == 429:
+        assert response.json()["detail"] == "Too Many Requests"
+    else:
+        assert response.status_code == 200
+        assert response.json()["order_price"] == 40.0
+        assert response.json()["order_vat"] == 8.0
 
-    # Validate the response
-    assert response.status_code == 200
-    assert response.json()["order_price"] == 40.0
-    assert response.json()["order_vat"] == 8.0
+
+@patch("src.application.dic.DIC.order_service", new_callable=AsyncMock)
+def test_rate_limiter_exceeded(mock_order_service, test_client):
+    # Mock the calculate_order method to return a predefined response
+    mock_order_service.calculate_order.return_value = {
+        "order_id": "123e4567-e89b-12d3-a456-426614174000",
+        "items": [
+            {"id": 1, "name": "Product A", "quantity": 2, "price": 10.0, "vat": 2.0},
+            {"id": 2, "name": "Product B", "quantity": 1, "price": 20.0, "vat": 4.0},
+        ],
+        "order_price": 40.0,
+        "order_vat": 8.0,
+    }
+
+    # Create input data using Pydantic models and convert them to dictionaries
+    products = [
+        ProductRequest(product_id=1, quantity=2).model_dump(),
+        ProductRequest(product_id=2, quantity=1).model_dump(),
+    ]
+    order = OrderRequest(items=products).model_dump()
+    request = CalculationRequest(order=order)
+    payload = request.model_dump()
+
+    # Perform consecutive requests to exceed the rate limit
+    for _ in range(6):  # Assuming a limit of 5 requests per minute
+        response = test_client.post("/order/calculate", json=payload)
+
+    # Verify that the last request returns 429 Too Many Requests
+    assert response.status_code == 429
+    assert response.reason_phrase == "Too Many Requests"

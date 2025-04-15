@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-from domain.dtos.calculation_request import CalculationRequest
+from src.domain.dtos.calculation_request import CalculationRequest
 from src.domain.dtos.order_request import OrderRequest
 from src.domain.dtos.product_request import ProductRequest
 from src.domain.models.order import Order
